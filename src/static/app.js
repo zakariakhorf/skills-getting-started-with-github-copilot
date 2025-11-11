@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
         const participantsList = details.participants
-          .map(p => `<li>${p}</li>`)
+          .map(p => `<li class="participant-item"><span class="participant-email">${p}</span><button class="delete-participant" data-activity="${name}" data-email="${p}" aria-label="Unregister ${p}">🗑️</button></li>`)
           .join("");
 
         activityCard.innerHTML = `
@@ -49,6 +49,42 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error fetching activities:", error);
     }
   }
+
+  // Handle unregister (delete) clicks using event delegation
+  activitiesList.addEventListener("click", async (event) => {
+    const btn = event.target.closest && event.target.closest('.delete-participant');
+    if (!btn) return;
+
+    const activity = btn.getAttribute('data-activity');
+    const email = btn.getAttribute('data-email');
+
+    if (!activity || !email) return;
+
+    try {
+      const resp = await fetch(`/activities/${encodeURIComponent(activity)}/participants?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE'
+      });
+
+      const result = await resp.json().catch(() => ({}));
+
+      if (resp.ok) {
+        // Re-fetch activities to update UI
+        fetchActivities();
+      } else {
+        // Show error message briefly
+        messageDiv.textContent = result.detail || result.message || 'Failed to unregister participant';
+        messageDiv.className = 'error';
+        messageDiv.classList.remove('hidden');
+        setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+      }
+    } catch (err) {
+      console.error('Error unregistering participant:', err);
+      messageDiv.textContent = 'Failed to unregister participant. Please try again.';
+      messageDiv.className = 'error';
+      messageDiv.classList.remove('hidden');
+      setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+    }
+  });
 
   // Handle form submission
   signupForm.addEventListener("submit", async (event) => {
